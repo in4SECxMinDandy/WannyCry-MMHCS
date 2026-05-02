@@ -1,0 +1,39 @@
+# WannaCry IOC References (Text Reference Only)
+# DO NOT store actual malware samples in this repository.
+
+# Mutex
+MsWinZonesCacheCounterMutexA
+
+# Killswitch Domain
+iuqerfsodp9ifjaposdfjhgosurijfaewrwergwea.com
+
+# File Extensions
+.wncry
+.wcry
+.WNCRYT
+
+# Ransom Note Files
+@Please_Read_Me@.txt
+@WanaDecryptor@.exe
+
+# Process Names
+tasksche.exe
+WanaDecryptor.exe
+
+# Registry Keys
+HKLM\SOFTWARE\WanaCrypt0r
+
+# SMB Port
+445
+
+# Strings in binary
+WANACRY!
+Wanna Decryptor
+WanaCrypt0r
+wcry@123
+TaskStart
+
+# References
+# MITRE ATT&CK: https://attack.mitre.org/software/S0366/
+# CISA Alert: https://www.cisa.gov/uscert/ncas/alerts/TA17-132A
+# Microsoft: https://www.microsoft.com/security/blog/2017/05/12/wannacrypt-ransomware-worm-targets-out-of-date-systems/

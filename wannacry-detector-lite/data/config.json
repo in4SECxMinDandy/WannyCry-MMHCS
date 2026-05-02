@@ -1,0 +1,31 @@
+{
+    "scanner": {
+        "max_workers": 4,
+        "recursive": true,
+        "scan_extensions": [
+            ".exe", ".dll", ".sys", ".bin"
+        ],
+        "max_file_size_mb": 100,
+        "whitelist_hashes": [],
+        "whitelist_paths": []
+    },
+    "ml_engine": {
+        "model_path": "models/wannacry_rf.pkl",
+        "threshold": 0.7,
+        "feature_count": 16
+    },
+    "pe_analyzer": {
+        "check_packer": true,
+        "check_imports": true,
+        "min_sections": 3
+    },
+    "yara_engine": {
+        "rules_path": "rules/wannacry.yar",
+        "compile_on_load": true
+    },
+    "report": {
+        "output_dir": "reports",
+        "formats": ["csv", "json"],
+        "include_metadata": true
+    }
+}
