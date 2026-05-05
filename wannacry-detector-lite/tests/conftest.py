@@ -171,3 +171,38 @@ def tmp_wannacry_yara(tmp_path: Path) -> Path:
     dst = tmp_path / "wannacry.yar"
     dst.write_text(src.read_text())
     return dst
+
+
+@pytest.fixture
+def tmp_blackcat_yara(tmp_path: Path) -> Path:
+    """Copy the BlackCat YARA rules to temp directory."""
+    src = PROJECT_ROOT / "rules" / "blackcat.yar"
+    dst = tmp_path / "blackcat.yar"
+    dst.write_text(src.read_text())
+    return dst
+
+
+@pytest.fixture
+def tmp_pe_file_blackcat_mock(tmp_path: Path) -> Path:
+    """Create a PE file containing BlackCat IOC strings."""
+    sections = [
+        (
+            ".text",
+            b"\x90" * 500
+            + b"encrypt_app::windows\x00"
+            + b"locker::core::\x00"
+            + b"rust_panic\x00"
+            + b"BCryptEncrypt\x00"
+            + b"\x90" * 500,
+        ),
+        (
+            ".rdata",
+            b"vssadmin delete shadows /all /quiet\x00"
+            + b"RECOVER-files-FILES.txt\x00"
+            + b"\x00" * 200,
+        ),
+    ]
+    pe_data = _build_minimal_pe(sections)
+    pe_path = tmp_path / "mock_blackcat.exe"
+    pe_path.write_bytes(pe_data)
+    return pe_path

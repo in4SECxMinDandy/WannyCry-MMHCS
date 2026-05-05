@@ -1,4 +1,4 @@
-"""WannaCry Detector Lite — Giao diện chính."""
+"""Ransomware Detector Lite — Giao diện chính (WannaCry + BlackCat)."""
 
 import sys
 from pathlib import Path
@@ -6,9 +6,9 @@ from pathlib import Path
 import customtkinter as ctk
 
 from gui.dashboard_tab import DashboardTab
+from gui.logs_tab import LogsTab
 from gui.scan_tab import ScanTab
 from gui.training_tab import TrainingTab
-from gui.logs_tab import LogsTab
 
 
 def launch_gui() -> None:
@@ -26,7 +26,7 @@ class WannaCryApp(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
 
-        self.title("WannaCry Detector Lite v1.0")
+        self.title("Ransomware Detector Lite v1.1 — WannaCry & BlackCat")
         self.geometry("1000x650")
         self.minsize(800, 500)
 
@@ -51,36 +51,36 @@ class WannaCryApp(ctk.CTk):
         self.sidebar_frame.grid_rowconfigure(5, weight=1)
 
         self.logo_label = ctk.CTkLabel(
-            self.sidebar_frame, 
-            text="WannaCry Detector", 
-            font=ctk.CTkFont(size=20, weight="bold")
+            self.sidebar_frame,
+            text="Ransomware\nDetector Lite",
+            font=ctk.CTkFont(size=18, weight="bold")
         )
         self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 30))
 
         # Nút chuyển tab
         self.btn_dashboard = ctk.CTkButton(
-            self.sidebar_frame, text="Bảng Điều Khiển", 
+            self.sidebar_frame, text="Bảng Điều Khiển",
             command=lambda: self.select_frame("dashboard"),
             fg_color="transparent", text_color=("gray10", "gray90"), hover_color=("gray70", "gray30"), anchor="w"
         )
         self.btn_dashboard.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
 
         self.btn_scan = ctk.CTkButton(
-            self.sidebar_frame, text="Quét File", 
+            self.sidebar_frame, text="Quét File",
             command=lambda: self.select_frame("scan"),
             fg_color="transparent", text_color=("gray10", "gray90"), hover_color=("gray70", "gray30"), anchor="w"
         )
         self.btn_scan.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
 
         self.btn_training = ctk.CTkButton(
-            self.sidebar_frame, text="Huấn Luyện", 
+            self.sidebar_frame, text="Huấn Luyện",
             command=lambda: self.select_frame("training"),
             fg_color="transparent", text_color=("gray10", "gray90"), hover_color=("gray70", "gray30"), anchor="w"
         )
         self.btn_training.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
-        
+
         self.btn_logs = ctk.CTkButton(
-            self.sidebar_frame, text="Logs", 
+            self.sidebar_frame, text="Logs",
             command=lambda: self.select_frame("logs"),
             fg_color="transparent", text_color=("gray10", "gray90"), hover_color=("gray70", "gray30"), anchor="w"
         )
@@ -91,14 +91,14 @@ class WannaCryApp(ctk.CTk):
         self.content_frame.grid(row=0, column=1, sticky="nsew")
         self.content_frame.grid_rowconfigure(0, weight=1)
         self.content_frame.grid_columnconfigure(0, weight=1)
-        
+
         # Các tab nội dung
         self.dashboard_tab = DashboardTab(self.content_frame)
         self.scan_tab = ScanTab(self.content_frame)
         self.scan_tab._on_scan_complete = self.dashboard_tab.update_summary
         self.training_tab = TrainingTab(self.content_frame)
         self.logs_tab = LogsTab(self.content_frame)
-        
+
         # 3. Status Bar
         self.status_bar = ctk.CTkLabel(
             self,
@@ -118,7 +118,7 @@ class WannaCryApp(ctk.CTk):
         # Reset button colors
         default_color = "transparent"
         active_color = ("gray75", "gray25")
-        
+
         self.btn_dashboard.configure(fg_color=active_color if name == "dashboard" else default_color)
         self.btn_scan.configure(fg_color=active_color if name == "scan" else default_color)
         self.btn_training.configure(fg_color=active_color if name == "training" else default_color)
@@ -150,16 +150,24 @@ class WannaCryApp(ctk.CTk):
         model_path = Path("models/wannacry_rf.pkl")
         self.dashboard_tab.update_ml_status(model_path.exists())
 
-        rules_path = Path("rules/wannacry.yar")
-        if rules_path.exists():
-            try:
-                import yara
-                rules = yara.compile(filepath=str(rules_path))
-                count = 0
-                for _ in rules:
-                    count += 1
-                self.dashboard_tab.update_yara_status(True, count)
-            except Exception:
-                self.dashboard_tab.update_yara_status(False)
-        else:
-            self.dashboard_tab.update_yara_status(False)
+        rules_dir = Path("rules")
+        rule_files = ["wannacry.yar", "blackcat.yar"]
+        total_rules = 0
+        all_loaded = True
+
+        for rule_file in rule_files:
+            rule_path = rules_dir / rule_file
+            if rule_path.exists():
+                try:
+                    import yara
+                    rules = yara.compile(filepath=str(rule_path))
+                    count = 0
+                    for _ in rules:
+                        count += 1
+                    total_rules += count
+                except Exception:
+                    all_loaded = False
+            else:
+                all_loaded = False
+
+        self.dashboard_tab.update_yara_status(all_loaded and total_rules > 0, total_rules)

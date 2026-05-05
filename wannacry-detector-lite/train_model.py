@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Train a Random Forest classifier for WannaCry detection.
+"""Train a Random Forest classifier for ransomware detection.
 
 Expects a CSV dataset with columns feature_1..feature_16 and label.
-The label column should contain "wannacry" for positive class and "benign" for negative.
+The label column should contain "wannacry", "blackcat", or "benign".
 
 Usage:
-    python train_model.py --dataset datasets/wannacry_lite.csv --output models/wannacry_rf.pkl
+    python train_model.py --dataset datasets/ransomware_lite.csv --output models/wannacry_rf.pkl
 """
 
 import argparse
@@ -18,6 +18,7 @@ from imblearn.over_sampling import SMOTE
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.preprocessing import LabelEncoder
 
 from core.feature_extractor import NUM_FEATURES
 from core.logger_setup import get_logger, setup_logging
@@ -55,11 +56,13 @@ def load_dataset(dataset_path: Path) -> tuple[np.ndarray, np.ndarray]:
     X = df[FEATURE_COLS].fillna(0).values.astype(np.float32)
     y = df["label"].values
 
-    mask = y == "wannacry"
-    y_binary = np.where(mask, 1, 0)
+    # Encode labels: benign=0, blackcat=1, wannacry=2 (alphabetical order)
+    le = LabelEncoder()
+    y_encoded = le.fit_transform(y)
 
-    logger.info("Dataset loaded: %d samples, %d wannacry", len(X), int(mask.sum()))
-    return X, y_binary
+    label_counts = {label: int((y == label).sum()) for label in le.classes_}
+    logger.info("Dataset loaded: %d samples, labels: %s", len(X), label_counts)
+    return X, y_encoded, le
 
 
 def train_model(
@@ -70,7 +73,7 @@ def train_model(
     test_size: float = 0.2,
     seed: int = 42,
 ) -> RandomForestClassifier:
-    """Train Random Forest model for WannaCry detection.
+    """Train Random Forest model for ransomware detection.
 
     Args:
         dataset_path: Path to training dataset CSV.
@@ -83,26 +86,31 @@ def train_model(
     Returns:
         Trained RandomForestClassifier.
     """
-    X, y = load_dataset(dataset_path)
+    X, y, le = load_dataset(dataset_path)
+    target_names = list(le.classes_)
 
-    imbalance_ratio = max(y.sum(), 1) / max((len(y) - y.sum()), 1)
-    if imbalance_ratio > 0.2:
+    # Check if SMOTE is needed for any minority class
+    unique, counts = np.unique(y, return_counts=True)
+    min_count = counts.min()
+    if min_count >= 6:  # SMOTE needs at least k_neighbors+1 samples
         logger.info(
-            "Imbalance ratio %.2f (wannacry: %d, benign: %d). Applying SMOTE.",
-            imbalance_ratio,
-            int(y.sum()),
-            int(len(y) - y.sum()),
+            "Class distribution: %s. Applying SMOTE.",
+            dict(zip(target_names, [int(c) for c in counts], strict=False)),
         )
         try:
-            smote = SMOTE(random_state=seed, k_neighbors=min(5, int(y.sum()) - 1))
+            k_neighbors = min(5, min_count - 1)
+            smote = SMOTE(random_state=seed, k_neighbors=k_neighbors)
             X, y = smote.fit_resample(X, y)
+            new_unique, new_counts = np.unique(y, return_counts=True)
             logger.info(
-                "After SMOTE: %d samples (%d wannacry)",
+                "After SMOTE: %d samples, distribution: %s",
                 len(X),
-                int(y.sum()),
+                dict(zip(target_names, [int(c) for c in new_counts], strict=False)),
             )
         except ValueError as e:
-            logger.warning("SMOTE failed (likely too few samples): %s. Skipping.", e)
+            logger.warning("SMOTE failed: %s. Skipping.", e)
+    else:
+        logger.info("Too few samples for SMOTE (min class has %d). Skipping.", min_count)
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=seed, stratify=y
@@ -120,7 +128,7 @@ def train_model(
     model.fit(X_train, y_train)
 
     y_pred = model.predict(X_test)
-    logger.info("\n%s", classification_report(y_test, y_pred, target_names=["benign", "wannacry"]))
+    logger.info("\n%s", classification_report(y_test, y_pred, target_names=target_names))
     logger.info("Confusion Matrix:\n%s", confusion_matrix(y_test, y_pred))
 
     try:
@@ -151,13 +159,13 @@ def train_model(
 def main() -> None:
     """CLI entry point for model training."""
     parser = argparse.ArgumentParser(
-        description="Train WannaCry detection Random Forest model"
+        description="Train ransomware detection Random Forest model"
     )
     parser.add_argument(
         "--dataset",
         type=Path,
-        default=Path("datasets/wannacry_lite.csv"),
-        help="Path to training dataset CSV (default: datasets/wannacry_lite.csv)",
+        default=Path("datasets/ransomware_lite.csv"),
+        help="Path to training dataset CSV (default: datasets/ransomware_lite.csv)",
     )
     parser.add_argument(
         "--output",
@@ -187,7 +195,7 @@ def main() -> None:
 
     setup_logging()
     logger.info("=" * 60)
-    logger.info("WannaCry Detector Lite — Model Training")
+    logger.info("Ransomware Detector Lite — Model Training")
     logger.info("=" * 60)
 
     train_model(

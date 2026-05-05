@@ -1,4 +1,4 @@
-"""Tab Bảng Điều Khiển — tổng quan trạng thái và kết quả quét gần nhất."""
+"""Tab Bảng Điều Khiển — tổng quan trạng thái và kết quả quét gần nhất (WannaCry & BlackCat)."""
 
 import customtkinter as ctk
 
@@ -14,14 +14,14 @@ class DashboardTab(ctk.CTkFrame):
         """Xây dựng UI bảng điều khiển."""
         header = ctk.CTkLabel(
             self,
-            text="WannaCry Detector Lite — Bảng Điều Khiển",
+            text="Ransomware Detector Lite — Bảng Điều Khiển",
             font=ctk.CTkFont(size=20, weight="bold"),
         )
         header.pack(pady=(20, 10))
 
         desc = ctk.CTkLabel(
             self,
-            text="Phát hiện 3 lớp: ML Engine + PE Analyzer + YARA Rules",
+            text="Phát hiện WannaCry & BlackCat: ML Engine + PE Analyzer + YARA Rules",
             font=ctk.CTkFont(size=13),
             text_color="gray",
         )
@@ -113,6 +113,7 @@ class DashboardTab(ctk.CTkFrame):
         text = (
             f"Tổng số file đã quét: {summary.get('total', 0)}\n"
             f"Phát hiện WannaCry: {summary.get('wannacry', 0)}\n"
+            f"Phát hiện BlackCat: {summary.get('blackcat', 0)}\n"
             f"Nghi ngờ: {summary.get('suspicious', 0)}\n"
             f"An toàn: {summary.get('benign', 0)}\n"
             f"YARA matches: {summary.get('yara_hits', 0)}\n"

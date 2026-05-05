@@ -1,4 +1,4 @@
-"""Tab Quét File — chọn file, tiến trình, kết quả màu sắc, đánh dấu người dùng để học lại."""
+"""Tab Quét File — chọn file, tiến trình, kết quả màu sắc, đánh dấu người dùng (WannaCry & BlackCat)."""
 
 import csv
 import threading
@@ -16,8 +16,9 @@ from core.scanner import Scanner
 logger = get_logger(__name__)
 
 VERDICT_COLORS = {
-    "wannacry": ("#FF4444", "#8B0000", "[!!] NGUY HIỂM"),
-    "suspicious": ("#FFA500", "#8B6914", "[?]  NGHI NGỜ"),
+    "wannacry": ("#FF4444", "#8B0000", "[!!] WANNACRY"),
+    "blackcat": ("#FF6600", "#8B3300", "[!!] BLACKCAT"),
+    "suspicious": ("#FFA500", "#8B6914", "[?]  NGHI NGỞ"),
     "benign": ("#44BB44", "#006400", "[-]  AN TOÀN"),
     "error": ("#888888", "#555555", "[X]  LỖI"),
 }
@@ -41,7 +42,7 @@ class ScanTab(ctk.CTkFrame):
         """Xây dựng UI tab quét."""
         header = ctk.CTkLabel(
             self,
-            text="Quét File — Phát Hiện WannaCry",
+            text="Quét File — Phát Hiện WannaCry & BlackCat",
             font=ctk.CTkFont(size=18, weight="bold"),
         )
         header.pack(pady=(15, 5))
@@ -189,7 +190,7 @@ class ScanTab(ctk.CTkFrame):
 
         for r in self._results:
             verdict = r.verdict
-            tag_name = "critical" if verdict == "wannacry" else (
+            tag_name = "critical" if verdict in ("wannacry", "blackcat") else (
                 "suspicious" if verdict == "suspicious" else "clean"
             )
             prefix = VERDICT_COLORS.get(verdict, ("", "", "?"))[2]
@@ -203,7 +204,7 @@ class ScanTab(ctk.CTkFrame):
         self.results_text.insert("end", "CHI TIẾT FILE\n\n")
         for r in self._results:
             verdict = r.verdict
-            tag_name = "critical" if verdict == "wannacry" else (
+            tag_name = "critical" if verdict in ("wannacry", "blackcat") else (
                 "suspicious" if verdict == "suspicious" else "clean"
             )
             prefix = VERDICT_COLORS.get(verdict, ("", "", "?"))[2]
@@ -218,7 +219,8 @@ class ScanTab(ctk.CTkFrame):
 
         gen = ReportGenerator(Path("reports"))
         summary = gen.generate_summary(self._results)
-        self._update_danger_summary(summary["wannacry"], summary["suspicious"], summary["benign"])
+        critical_count = summary["wannacry"] + summary.get("blackcat", 0)
+        self._update_danger_summary(critical_count, summary["suspicious"], summary["benign"])
 
     def _update_danger_summary(self, critical: int, suspicious: int, clean: int) -> None:
         """Cập nhật bảng tổng quan mức độ nguy hiểm."""

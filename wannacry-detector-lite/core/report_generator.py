@@ -1,4 +1,4 @@
-"""Report generation in CSV and JSON formats."""
+"""Report generation in CSV and JSON formats (multi-family)."""
 
 import csv
 import json
@@ -96,6 +96,7 @@ class ReportGenerator:
             "total_files": len(results),
             "verdicts": {
                 "wannacry": sum(1 for r in results if r.verdict == "wannacry"),
+                "blackcat": sum(1 for r in results if r.verdict == "blackcat"),
                 "suspicious": sum(1 for r in results if r.verdict == "suspicious"),
                 "benign": sum(1 for r in results if r.verdict == "benign"),
             },
@@ -122,6 +123,7 @@ class ReportGenerator:
         return {
             "total": len(results),
             "wannacry": sum(1 for r in results if r.verdict == "wannacry"),
+            "blackcat": sum(1 for r in results if r.verdict == "blackcat"),
             "suspicious": sum(1 for r in results if r.verdict == "suspicious"),
             "benign": sum(1 for r in results if r.verdict == "benign"),
             "yara_hits": sum(1 for r in results if r.yara_matches),

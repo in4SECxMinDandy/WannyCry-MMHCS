@@ -67,7 +67,9 @@ class TestScannerEdgeCases:
 
     def test_yara_engine_disabled_when_no_rules(self, tmp_path):
         cfg = get_default_config()
-        cfg["yara_engine"]["rules_path"] = str(tmp_path / "no_rules.yar")
+        cfg["yara_engine"]["rules_dir"] = str(tmp_path / "no_rules_dir")
+        cfg["yara_engine"]["rules_files"] = ["no_rules.yar"]
+        cfg["yara_engine"].pop("rules_path", None)
         scanner = Scanner(cfg)
         assert scanner.yara_engine is None
 

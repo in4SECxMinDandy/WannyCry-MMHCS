@@ -57,17 +57,34 @@ class Scanner:
             logger.info("No ML model found at %s — ML layer disabled", model_path)
 
         self.yara_engine: YaraEngine | None = None
-        rules_path = Path(self.yara_cfg["rules_path"])
-        if rules_path.exists():
+        yara_cfg = self.yara_cfg
+
+        # Build list of YARA rule file paths
+        rules_paths: list[Path] = []
+        if "rules_files" in yara_cfg and "rules_dir" in yara_cfg:
+            rules_dir = Path(yara_cfg["rules_dir"])
+            for fname in yara_cfg["rules_files"]:
+                rp = rules_dir / fname
+                if rp.exists():
+                    rules_paths.append(rp)
+                else:
+                    logger.warning("YARA rules file not found: %s", rp)
+        elif "rules_path" in yara_cfg:
+            # Legacy single-file config
+            rp = Path(yara_cfg["rules_path"])
+            if rp.exists():
+                rules_paths.append(rp)
+
+        if rules_paths:
             try:
                 self.yara_engine = YaraEngine(
-                    rules_path=rules_path,
-                    compile_on_load=self.yara_cfg.get("compile_on_load", True),
+                    rules_paths=rules_paths,
+                    compile_on_load=yara_cfg.get("compile_on_load", True),
                 )
             except Exception as e:
                 logger.warning("YARA engine unavailable: %s", e)
         else:
-            logger.info("No YARA rules found at %s — YARA layer disabled", rules_path)
+            logger.info("No YARA rules found — YARA layer disabled")
 
     def _should_scan(self, file_path: Path) -> bool:
         """Check if a file should be scanned.
@@ -258,10 +275,23 @@ def _combine_verdict(
         yara_matches: List of matching YARA rule names.
 
     Returns:
-        Final verdict: "wannacry", "suspicious", or "benign".
+        Final verdict: "wannacry", "blackcat", "suspicious", or "benign".
     """
     if yara_matches:
-        return "wannacry"
+        # Check which family the YARA rules belong to
+        has_blackcat = any(m.startswith("BlackCat") for m in yara_matches)
+        has_wannacry = any(m.startswith("WannaCry") for m in yara_matches)
+        if has_blackcat:
+            return "blackcat"
+        if has_wannacry:
+            return "wannacry"
+        # Generic YARA match — still suspicious
+        return "suspicious"
+
+    if ml_label == "blackcat" and ml_score >= ml_threshold:
+        if pe_score >= 0.3:
+            return "blackcat"
+        return "suspicious"
 
     if ml_label == "wannacry" and ml_score >= ml_threshold:
         if pe_score >= 0.3:

@@ -5,8 +5,8 @@
 [![Tests](https://img.shields.io/badge/tests-117%20passed-brightgreen)]()
 [![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen)]()
 
-**Công cụ phát hiện mã độc WannaCry dành cho nghiên cứu học thuật.**  
-*A lightweight WannaCry ransomware detection tool for academic research.*
+**Công cụ phát hiện mã độc tống tiền WannaCry & BlackCat dành cho nghiên cứu học thuật.**  
+*A lightweight ransomware detection tool (WannaCry & BlackCat/ALPHV) for academic research.*
 
 ---
 
@@ -28,27 +28,37 @@
 
 ## 🔍 TỔNG QUAN | OVERVIEW
 
-`wannacry-detector-lite` là một dự án nghiên cứu học thuật tập trung vào việc nhận diện, phân tích và phát hiện các biến thể của mã độc tống tiền WannaCry. Dự án ứng dụng kiến trúc phát hiện đa lớp (Multi-layer Detection), kết hợp giữa Phân tích Cấu trúc PE, Phân tích Cú pháp YARA và Học máy (Machine Learning) để tối ưu độ chính xác và giảm thiểu tỷ lệ dương tính giả (False Positives).
+`wannacry-detector-lite` là một dự án nghiên cứu học thuật tập trung vào việc nhận diện, phân tích và phát hiện các biến thể của mã độc tống tiền **WannaCry** và **BlackCat (ALPHV)**. Dự án ứng dụng kiến trúc phát hiện đa lớp (Multi-layer Detection), kết hợp giữa Phân tích Cấu trúc PE, Phân tích Cú pháp YARA và Học máy (Machine Learning) để tối ưu độ chính xác và giảm thiểu tỷ lệ dương tính giả (False Positives).
 
 Dự án này là phiên bản thu gọn (Lite), tập trung hoàn toàn vào việc phát hiện tĩnh (Static Analysis), loại bỏ các chức năng yêu cầu mạng (như gọi API, truy vấn cơ sở dữ liệu đám mây) hay Honeypot để đảm bảo tốc độ quét nhanh và dễ dàng triển khai trong môi trường cách ly (Air-gapped).
+
+### Họ Ransomware Được Hỗ Trợ
+| Họ Ransomware | Mô tả | MITRE ATT&CK |
+|---|---|---|
+| **WannaCry** | Ransomware worm khai thác EternalBlue (SMB), mã hóa AES-128-CBC | [S0366](https://attack.mitre.org/software/S0366/) |
+| **BlackCat (ALPHV)** | RaaS viết bằng Rust, mã hóa AES/ChaCha20+RSA, double extortion | [S1068](https://attack.mitre.org/software/S1068/) |
 
 ---
 
 ## 🧠 KIẾN TRÚC PHÁT HIỆN | DETECTION ARCHITECTURE
 
-Hệ thống hoạt động với 3 lớp phòng thủ chính để phát hiện WannaCry:
+Hệ thống hoạt động với 3 lớp phòng thủ chính để phát hiện ransomware:
 
 1. **Lớp 1: PE Analyzer (Phân tích cấu trúc PE)**
-   - Phân tích các hàm API khả nghi (Suspicious Imports) như `CryptGenKey`, `InternetOpenUrlA`, `CreateServiceA`...
+   - Phân tích các hàm API khả nghi đặc trưng cho từng họ ransomware.
+   - **WannaCry**: `CryptGenKey`, `InternetOpenUrlA`, `CreateServiceA`...
+   - **BlackCat**: `BCryptEncrypt`, `BCryptDecrypt`, `CreateToolhelp32Snapshot`, `TerminateProcess`...
+   - Phát hiện binary được biên dịch bằng Rust (đặc trưng của BlackCat).
    - Phát hiện các dấu hiệu file bị mã hóa (Packer) hoặc có cấu trúc bất thường.
 
 2. **Lớp 2: YARA Engine (Phân tích theo mẫu)**
-   - Sử dụng tập luật (rules) YARA đặc tả riêng cho WannaCry.
-   - Tìm kiếm các chuỗi (Strings), Mutex (`MsWinZoneMemory`), và Killswitch Domain độc quyền của WannaCry.
+   - Sử dụng tập luật (rules) YARA đặc tả riêng cho **WannaCry** (7 rules) và **BlackCat** (6 rules).
+   - **WannaCry**: Tìm kiếm chuỗi `WANACRY!`, Mutex `MsWinZoneMemory`, Killswitch Domain.
+   - **BlackCat**: Tìm kiếm Rust module paths (`encrypt_app::`, `locker::core::`), cấu hình JSON nhúng, lệnh xóa shadow copy, UAC bypass, PsExec lateral movement.
 
 3. **Lớp 3: Machine Learning Engine (Học máy)**
-   - Sử dụng mô hình Random Forest.
-   - Trích xuất 16 đặc trưng từ file thực thi (Entropy, tỉ lệ Byte, các tham số cấu trúc PE...) để phân loại hành vi một cách chính xác kể cả khi WannaCry bị làm mờ (Obfuscated) một phần.
+   - Sử dụng mô hình Random Forest với **3 lớp phân loại**: `wannacry`, `blackcat`, `benign`.
+   - Trích xuất 16 đặc trưng từ file thực thi (Entropy, tỉ lệ Byte, các tham số cấu trúc PE...) để phân loại hành vi một cách chính xác kể cả khi ransomware bị làm mờ (Obfuscated) một phần.
 
 ---
 
@@ -134,15 +144,16 @@ Giao diện bao gồm 3 chức năng (Tabs) chính:
 Hệ thống cho phép bạn tự huấn luyện mô hình phân loại với bộ dữ liệu tổng hợp (synthetic data) mà không cần dùng mã độc thật.
 
 ```bash
-# BƯỚC 1: Tạo bộ dữ liệu tổng hợp (Giả lập đặc trưng của WannaCry và File sạch)
+# BƯỚC 1: Tạo bộ dữ liệu tổng hợp (Giả lập đặc trưng WannaCry, BlackCat và File sạch)
 python scripts/build_wannacry_dataset.py \
     --wannacry-count 500 \
+    --blackcat-count 500 \
     --benign-count 2000 \
-    --output datasets/wannacry_lite.csv
+    --output datasets/ransomware_lite.csv
 
-# BƯỚC 2: Tiến hành huấn luyện mô hình Random Forest
+# BƯỚC 2: Tiến hành huấn luyện mô hình Random Forest (3 lớp)
 python train_model.py \
-    --dataset datasets/wannacry_lite.csv \
+    --dataset datasets/ransomware_lite.csv \
     --n-estimators 200 \
     --max-depth 20 \
     --model-out models/wannacry_rf.pkl
@@ -161,18 +172,20 @@ wannacry-detector-lite/
 ├── train_model.py          # Script huấn luyện mô hình Machine Learning
 ├── core/                   # Chứa các module xử lý cốt lõi
 │   ├── feature_extractor.py  # Trích xuất 16 đặc trưng (Entropy, PE...)
-│   ├── ml_engine.py        # Tải mô hình và suy luận Học máy
-│   ├── pe_analyzer.py      # Phân tích tĩnh cấu trúc PE
-│   ├── yara_engine.py      # Xử lý quy tắc YARA
+│   ├── ml_engine.py        # Tải mô hình và suy luận Học máy (3-class)
+│   ├── pe_analyzer.py      # Phân tích tĩnh cấu trúc PE (WannaCry + BlackCat)
+│   ├── yara_engine.py      # Xử lý quy tắc YARA (multi-file)
 │   ├── scanner.py          # Bộ điều phối quy trình quét 3-lớp
 │   ├── fp_reducer.py       # Bộ lọc Whitelist (giảm False Positive)
 │   ├── config_manager.py   # Đọc và xác thực cấu hình JSON
 │   ├── logger_setup.py     # Thiết lập Logging hệ thống
 │   └── report_generator.py # Xuất báo cáo kết quả quét (JSON, CSV, PDF)
 ├── gui/                    # Mã nguồn Giao diện đồ họa CustomTkinter
-├── rules/wannacry.yar      # Tập luật YARA dành riêng cho WannaCry
+├── rules/                  # Tập luật YARA
+│   ├── wannacry.yar        # 7 rules dành riêng cho WannaCry
+│   └── blackcat.yar        # 6 rules dành riêng cho BlackCat/ALPHV
 ├── scripts/                # Các công cụ hỗ trợ (tạo Dataset, v.v.)
-├── tests/                  # Bộ Test nội bộ (đạt 85% coverage)
+├── tests/                  # Bộ Test nội bộ (đạt 84% coverage, 134 tests)
 └── docs/                   # Tài liệu thiết kế chi tiết
 ```
 
@@ -215,9 +228,16 @@ pyright
 ## 📚 TÀI LIỆU THAM KHẢO | REFERENCES
 
 Dự án được xây dựng dựa trên sự phân tích từ các nguồn uy tín:
+
+### WannaCry
 - [MITRE ATT&CK — S0366 WannaCry](https://attack.mitre.org/software/S0366/)
 - [CISA Alert TA17-132A - Indicators of Compromise](https://www.cisa.gov/uscert/ncas/alerts/TA17-132A)
 - [Microsoft: WannaCrypt ransomware worm targets out-of-date systems](https://www.microsoft.com/security/blog/2017/05/12/wannacrypt-ransomware-worm-targets-out-of-date-systems/)
+
+### BlackCat (ALPHV)
+- [MITRE ATT&CK — S1068 ALPHV/BlackCat](https://attack.mitre.org/software/S1068/)
+- [FBI/CISA #StopRansomware: ALPHV BlackCat (AA23-353A)](https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-353a)
+- [SentinelOne: BlackCat Ransomware Technical Analysis](https://www.sentinelone.com/labs/blackcat-ransomware/)
 
 ---
 

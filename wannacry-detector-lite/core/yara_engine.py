@@ -1,4 +1,4 @@
-"""YARA engine wrapper for WannaCry detection."""
+"""YARA engine wrapper for ransomware detection (multi-family)."""
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -21,38 +21,65 @@ class YaraMatch:
 
 
 class YaraEngine:
-    """Wrapper around yara-python for WannaCry-specific rule matching."""
+    """Wrapper around yara-python for multi-family ransomware rule matching."""
 
-    def __init__(self, rules_path: Path, compile_on_load: bool = True) -> None:
+    def __init__(
+        self,
+        rules_path: Path | None = None,
+        rules_paths: list[Path] | None = None,
+        compile_on_load: bool = True,
+    ) -> None:
         """Initialize YARA engine.
 
         Args:
-            rules_path: Path to YARA rules file.
+            rules_path: Path to single YARA rules file (backward compatible).
+            rules_paths: List of paths to YARA rules files.
             compile_on_load: Whether to compile rules immediately.
 
         Raises:
-            FileNotFoundError: If rules file does not exist.
+            FileNotFoundError: If any rules file does not exist.
             yara.Error: If rules compilation fails.
         """
-        self.rules_path = Path(rules_path)
+        self._rule_paths: list[Path] = []
+        if rules_paths:
+            self._rule_paths = [Path(p) for p in rules_paths]
+        elif rules_path:
+            self._rule_paths = [Path(rules_path)]
         self._rules: yara.Rules | None = None
 
         if compile_on_load:
             self.compile()
 
+    @property
+    def rules_path(self) -> Path | None:
+        """Return first rule path for backward compatibility."""
+        return self._rule_paths[0] if self._rule_paths else None
+
     def compile(self) -> None:
-        """Compile YARA rules from file.
+        """Compile YARA rules from all configured files.
 
         Raises:
-            FileNotFoundError: If rules file does not exist.
+            FileNotFoundError: If any rules file does not exist.
             yara.Error: If compilation fails.
         """
-        if not self.rules_path.exists():
-            raise FileNotFoundError(f"YARA rules file not found: {self.rules_path}")
+        if not self._rule_paths:
+            raise FileNotFoundError("No YARA rules files configured")
+
+        # Build filepaths dict for multi-file compilation
+        filepaths: dict[str, str] = {}
+        for rule_path in self._rule_paths:
+            if not rule_path.exists():
+                raise FileNotFoundError(f"YARA rules file not found: {rule_path}")
+            namespace = rule_path.stem  # e.g. "wannacry", "blackcat"
+            filepaths[namespace] = str(rule_path)
 
         try:
-            self._rules = yara.compile(filepath=str(self.rules_path))
-            logger.info("YARA rules compiled from %s", self.rules_path)
+            self._rules = yara.compile(filepaths=filepaths)
+            logger.info(
+                "YARA rules compiled from %d file(s): %s",
+                len(filepaths),
+                list(filepaths.keys()),
+            )
         except yara.Error as e:
             logger.error("Failed to compile YARA rules: %s", e)
             raise
@@ -62,7 +89,7 @@ class YaraEngine:
         return self._rules is not None
 
     def scan_file(self, file_path: Path, timeout: int = 60) -> list[YaraMatch]:
-        """Scan a file for WannaCry YARA matches.
+        """Scan a file for ransomware YARA matches.
 
         Args:
             file_path: Path to file to scan.
@@ -96,7 +123,7 @@ class YaraEngine:
         return results
 
     def scan_bytes(self, data: bytes, timeout: int = 60) -> list[YaraMatch]:
-        """Scan raw bytes for WannaCry YARA matches.
+        """Scan raw bytes for ransomware YARA matches.
 
         Args:
             data: Raw bytes to scan.

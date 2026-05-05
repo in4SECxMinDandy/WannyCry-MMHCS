@@ -29,7 +29,8 @@ DEFAULT_CONFIG = {
         "min_sections": 3,
     },
     "yara_engine": {
-        "rules_path": "rules/wannacry.yar",
+        "rules_dir": "rules",
+        "rules_files": ["wannacry.yar", "blackcat.yar"],
         "compile_on_load": True,
     },
     "report": {
