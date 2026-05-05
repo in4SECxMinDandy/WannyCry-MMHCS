@@ -1,2 +1,0 @@
-file_path,verdict,ml_score,pe_suspicion_score,yara_matches,file_size,sha256,scan_time
-C:\Users\haqua\Documents\GitHub\BTL Hoang\wannacry-detector-lite\tests\fixtures\benign_stub.exe,benign,0.0,0.0,,102,b82f69658d313814bbf0ab0f839cf3d2b4697eb33247501c89fd37b2d934bf6d,2026-04-30T17:17:16.016739+00:00

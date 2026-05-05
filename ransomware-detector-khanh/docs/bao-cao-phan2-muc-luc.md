@@ -5,7 +5,7 @@ dựa trên Học máy, Phân tích PE và YARA Rules
 **Sinh viên:** Trần Huy Hoàng — B23DCAT190 — An toàn thông tin — PTIT
 
 > **Ghi chú:** Mục lục được xây dựng bám sát code nguồn thực tế của dự án
-> `wannacry-detector-lite`. Chỉ trình bày các tính năng đã được triển khai.
+> `ransomware-detector-khanh`. Chỉ trình bày các tính năng đã được triển khai.
 
 ---
 
@@ -330,4 +330,4 @@ dựa trên Học máy, Phân tích PE và YARA Rules
 9. VirusFamily PE Format — Microsoft PE/COFF Specification
 
 ---
-*Tài liệu bám sát mã nguồn `wannacry-detector-lite` — 05/2026*
+*Tài liệu bám sát mã nguồn `ransomware-detector-khanh` — 05/2026*

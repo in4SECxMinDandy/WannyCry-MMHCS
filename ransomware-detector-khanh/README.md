@@ -28,7 +28,7 @@
 
 ## 🔍 TỔNG QUAN | OVERVIEW
 
-`wannacry-detector-lite` là một dự án nghiên cứu học thuật tập trung vào việc nhận diện, phân tích và phát hiện các biến thể của mã độc tống tiền **WannaCry** và **BlackCat (ALPHV)**. Dự án ứng dụng kiến trúc phát hiện đa lớp (Multi-layer Detection), kết hợp giữa Phân tích Cấu trúc PE, Phân tích Cú pháp YARA và Học máy (Machine Learning) để tối ưu độ chính xác và giảm thiểu tỷ lệ dương tính giả (False Positives).
+`ransomware-detector-khanh` là một dự án nghiên cứu học thuật tập trung vào việc nhận diện, phân tích và phát hiện các biến thể của mã độc tống tiền **WannaCry** và **BlackCat (ALPHV)**. Dự án ứng dụng kiến trúc phát hiện đa lớp (Multi-layer Detection), kết hợp giữa Phân tích Cấu trúc PE, Phân tích Cú pháp YARA và Học máy (Machine Learning) để tối ưu độ chính xác và giảm thiểu tỷ lệ dương tính giả (False Positives).
 
 Dự án này là phiên bản thu gọn (Lite), tập trung hoàn toàn vào việc phát hiện tĩnh (Static Analysis), loại bỏ các chức năng yêu cầu mạng (như gọi API, truy vấn cơ sở dữ liệu đám mây) hay Honeypot để đảm bảo tốc độ quét nhanh và dễ dàng triển khai trong môi trường cách ly (Air-gapped).
 
@@ -90,7 +90,7 @@ Hệ thống hoạt động với 3 lớp phòng thủ chính để phát hiện
 ```bash
 # 1. Clone repository về máy
 git clone <repo-url>
-cd wannacry-detector-lite
+cd ransomware-detector-khanh
 
 # 2. Tạo môi trường ảo (Khuyến nghị)
 python -m venv venv
@@ -167,7 +167,7 @@ python main.py --scan tests/fixtures/
 ## 📂 CẤU TRÚC THƯ MỤC | DIRECTORY STRUCTURE
 
 ```text
-wannacry-detector-lite/
+ransomware-detector-khanh/
 ├── main.py                 # Điểm đầu vào (Entrypoint) cho cả CLI và GUI
 ├── train_model.py          # Script huấn luyện mô hình Machine Learning
 ├── core/                   # Chứa các module xử lý cốt lõi

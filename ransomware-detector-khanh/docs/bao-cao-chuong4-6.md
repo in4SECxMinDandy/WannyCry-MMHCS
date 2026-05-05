@@ -86,7 +86,7 @@ Với mỗi file, phương thức `_analyze_file()` thực hiện tuần tự:
 ### 4.4 Cấu trúc module dự án
 
 ```
-wannacry-detector-lite/
+ransomware-detector-khanh/
 ├── main.py                    # CLI entrypoint + GUI launcher
 ├── train_model.py             # Huấn luyện Random Forest
 ├── core/
