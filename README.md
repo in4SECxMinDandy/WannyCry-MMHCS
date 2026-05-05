@@ -70,13 +70,6 @@ Hệ thống hoạt động với 3 lớp phòng thủ chính để phát hiện
 - ✅ Trình tạo bộ dữ liệu giả lập (Synthetic Dataset Builder) dùng cho mục đích đào tạo mô hình.
 - ✅ Quy trình huấn luyện Random Forest hoàn chỉnh có khả năng tùy chỉnh tham số.
 - ✅ Tỉ lệ bao phủ mã (Code Coverage) đạt mức an toàn >85%.
-
-### Những gì KHÔNG BAO GỒM (Để tối ưu cho bản Lite)
-- ❌ Không kết nối Internet (Không gọi API VirusTotal, MalwareBazaar, ThreatFox, v.v.).
-- ❌ Không tích hợp Honeypot hay tập tin nhử mồi (Decoy files).
-- ❌ Không có chế độ bảo vệ/giám sát thời gian thực (Real-time Watchdog / Network Monitor).
-- ❌ **Không chứa mẫu mã độc thực (Live Malware) bên trong kho lưu trữ.**
-
 ---
 
 ## ⚙️ CÀI ĐẶT | INSTALLATION
