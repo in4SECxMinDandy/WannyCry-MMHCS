@@ -139,8 +139,12 @@ def train_model(
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(model, output_path)
-    logger.info("Model saved to %s", output_path)
+    payload = {
+        "model": model,
+        "label_classes": list(le.classes_),
+    }
+    joblib.dump(payload, output_path)
+    logger.info("Model saved to %s (with label_classes: %s)", output_path, list(le.classes_))
 
     feature_importances = model.feature_importances_
     logger.info("Top 5 features by importance:")

@@ -7,7 +7,7 @@ dựa trên Học máy, Phân tích PE và YARA Rules
 
 | | |
 |---|---|
-| **Họ và tên** | Trần Huy Hoàng |
+| **Họ và tên** | Hà Quang Minh |
 | **Mã sinh viên** | B23DCAT190 |
 | **Ngành** | An toàn thông tin |
 | **Trường** | Học viện Công nghệ Bưu chính Viễn thông (PTIT) |

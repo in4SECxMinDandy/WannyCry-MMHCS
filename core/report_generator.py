@@ -122,6 +122,7 @@ class ReportGenerator:
         """
         return {
             "total": len(results),
+            "known_malware": sum(1 for r in results if r.verdict == "known_malware"),
             "wannacry": sum(1 for r in results if r.verdict == "wannacry"),
             "blackcat": sum(1 for r in results if r.verdict == "blackcat"),
             "suspicious": sum(1 for r in results if r.verdict == "suspicious"),

@@ -16,6 +16,7 @@ from core.scanner import Scanner
 logger = get_logger(__name__)
 
 VERDICT_COLORS = {
+    "known_malware": ("#FF0000", "#660000", "[!!!] MÃ ĐỘC ĐÃ BIẾT"),
     "wannacry": ("#FF4444", "#8B0000", "[!!] WANNACRY"),
     "blackcat": ("#FF6600", "#8B3300", "[!!] BLACKCAT"),
     "suspicious": ("#FFA500", "#8B6914", "[?]  NGHI NGỞ"),
@@ -175,6 +176,7 @@ class ScanTab(ctk.CTkFrame):
     def _display_results(self) -> None:
         """Hiển thị kết quả quét với màu sắc theo mức độ nguy hiểm."""
         self.results_text.delete("1.0", "end")
+        self.results_text._textbox.tag_configure("known_malware", foreground="#FF0000")
         self.results_text._textbox.tag_configure("critical", foreground="#FF4444")
         self.results_text._textbox.tag_configure("suspicious", foreground="#FFA500")
         self.results_text._textbox.tag_configure("clean", foreground="#44BB44")
@@ -182,17 +184,24 @@ class ScanTab(ctk.CTkFrame):
 
         if not self._results:
             self.results_text.insert("1.0", "Không có kết quả.\n")
-            self._update_danger_summary(0, 0, 0)
+            self._update_danger_summary(0, 0, 0, 0)
             return
 
         header_line = f"{'TRẠNG THÁI':15s} {'ML Score':>9s} {'PE Score':>9s} YARA Matches\n"
         self.results_text.insert("end", header_line + "─" * 70 + "\n")
 
+        def _tag_for(verdict: str) -> str:
+            if verdict == "known_malware":
+                return "known_malware"
+            if verdict in ("wannacry", "blackcat"):
+                return "critical"
+            if verdict == "suspicious":
+                return "suspicious"
+            return "clean"
+
         for r in self._results:
             verdict = r.verdict
-            tag_name = "critical" if verdict in ("wannacry", "blackcat") else (
-                "suspicious" if verdict == "suspicious" else "clean"
-            )
+            tag_name = _tag_for(verdict)
             prefix = VERDICT_COLORS.get(verdict, ("", "", "?"))[2]
             line = (
                 f"{prefix:15s} {r.ml_score:>9.3f} {r.pe_suspicion_score:>9.2f} "
@@ -204,9 +213,7 @@ class ScanTab(ctk.CTkFrame):
         self.results_text.insert("end", "CHI TIẾT FILE\n\n")
         for r in self._results:
             verdict = r.verdict
-            tag_name = "critical" if verdict in ("wannacry", "blackcat") else (
-                "suspicious" if verdict == "suspicious" else "clean"
-            )
+            tag_name = _tag_for(verdict)
             prefix = VERDICT_COLORS.get(verdict, ("", "", "?"))[2]
             fname = Path(r.file_path).name
             detail = (
@@ -219,18 +226,24 @@ class ScanTab(ctk.CTkFrame):
 
         gen = ReportGenerator(Path("reports"))
         summary = gen.generate_summary(self._results)
-        critical_count = summary["wannacry"] + summary.get("blackcat", 0)
-        self._update_danger_summary(critical_count, summary["suspicious"], summary["benign"])
+        self._update_danger_summary(
+            summary.get("known_malware", 0),
+            summary["wannacry"] + summary.get("blackcat", 0),
+            summary["suspicious"],
+            summary["benign"],
+        )
 
-    def _update_danger_summary(self, critical: int, suspicious: int, clean: int) -> None:
+    def _update_danger_summary(self, known: int, critical: int, suspicious: int, clean: int) -> None:
         """Cập nhật bảng tổng quan mức độ nguy hiểm."""
-        total = critical + suspicious + clean
+        total = known + critical + suspicious + clean
         if total == 0:
             self.danger_badge.configure(text="TỔNG QUAN: KHÔNG CÓ FILE", text_color="gray")
             self.danger_detail.configure(text="")
             return
 
-        if critical > 0:
+        if known > 0:
+            level, color = "MÃ ĐỘC ĐÃ BIẾT", "#FF0000"
+        elif critical > 0:
             level, color = "NGUY HIỂM", "#FF4444"
         elif suspicious > 0:
             level, color = "CẢNH BÁO", "#FFA500"
@@ -239,7 +252,10 @@ class ScanTab(ctk.CTkFrame):
 
         self.danger_badge.configure(text=f"TỔNG QUAN: {level}", text_color=color)
         self.danger_detail.configure(
-            text=f"Tổng: {total}  |  [!] Nguy hiểm: {critical}  |  [?] Nghi ngờ: {suspicious}  |  [-] An toàn: {clean}"
+            text=(
+                f"Tổng: {total}  |  [!!!] Đã biết: {known}  |  [!] Nguy hiểm: {critical}  "
+                f"|  [?] Nghi ngờ: {suspicious}  |  [-] An toàn: {clean}"
+            )
         )
 
     # ---------- Phản hồi / học từ người dùng ----------
@@ -343,7 +359,10 @@ class ScanTab(ctk.CTkFrame):
                 if mark == "Bỏ qua":
                     continue
 
-                label = "wannacry" if mark == "Nguy hiểm" else "benign"
+                if mark == "Nguy hiểm":
+                    label = r.verdict if r.verdict in ("wannacry", "blackcat") else "wannacry"
+                else:
+                    label = "benign"
                 file_path = Path(r.file_path)
 
                 try:

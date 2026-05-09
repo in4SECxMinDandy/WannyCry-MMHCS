@@ -1,7 +1,7 @@
 # BÁO CÁO BÀI TẬP LỚN
 
 **Đề tài:** Nghiên cứu và Xây dựng Công cụ Phát hiện Mã độc WannaCry dựa trên Học máy, Phân tích PE và YARA Rules
-**Sinh viên:** Trần Huy Hoàng | **Mã SV:** B23DCAT190 | **Ngành:** An toàn thông tin | **Trường:** PTIT
+**Sinh viên:** Hà Quang Minh | **Mã SV:** B23DCAT190 | **Ngành:** An toàn thông tin | **Trường:** PTIT
 
 ---
 

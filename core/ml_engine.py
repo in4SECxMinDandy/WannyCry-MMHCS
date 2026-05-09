@@ -31,6 +31,9 @@ class MLEngine:
     def _load_model(self):
         """Load model from disk.
 
+        Supports both legacy single-object pickles and new dict pickles
+        that include label_classes for proper decoding.
+
         Returns:
             Trained model object.
 
@@ -43,7 +46,13 @@ class MLEngine:
                 "Run 'python train_model.py' to train a model first."
             )
         try:
-            model = joblib.load(self.model_path)
+            data = joblib.load(self.model_path)
+            if isinstance(data, dict) and "model" in data:
+                model = data["model"]
+                self._label_classes = data.get("label_classes")
+            else:
+                model = data
+                self._label_classes = None
             logger.info("Model loaded from %s", self.model_path)
             return model
         except Exception as e:
@@ -71,20 +80,43 @@ class MLEngine:
             proba = self._model.predict_proba(arr)[0]
             classes = self._model.classes_
 
-            # Find the malware class with the highest probability
-            malware_classes = {"wannacry", "blackcat", "1", "malicious"}
+            # Build label map: class index -> human-readable label
+            label_map: dict[int | str, str] = {}
+            if self._label_classes is not None:
+                for i, cls in enumerate(classes):
+                    idx = int(cls)
+                    if 0 <= idx < len(self._label_classes):
+                        label_map[cls] = str(self._label_classes[idx]).lower()
+            else:
+                # Legacy fallback: infer from number of classes
+                # 2-class [0,1]: 0=benign, 1=wannacry (original binary model)
+                # 3-class [0,1,2]: 0=benign, 1=blackcat, 2=wannacry (LabelEncoder alphabetical)
+                numeric_classes = []
+                for cls in classes:
+                    try:
+                        numeric_classes.append(int(cls))
+                    except (ValueError, TypeError):
+                        numeric_classes = None
+                        break
+                if numeric_classes is not None and len(numeric_classes) == 3 and set(numeric_classes) == {0, 1, 2}:
+                    legacy_map = {0: "benign", 1: "blackcat", 2: "wannacry"}
+                else:
+                    legacy_map = {0: "benign", 1: "wannacry"}
+                for cls in classes:
+                    try:
+                        label_map[cls] = legacy_map.get(int(cls), str(cls).lower())
+                    except (ValueError, TypeError):
+                        label_map[cls] = str(cls).lower()
+
+            malware_classes = {"wannacry", "blackcat", "malicious"}
             best_label = "benign"
             best_score = 0.0
             for i, cls in enumerate(classes):
-                cls_str = str(cls).lower()
+                cls_str = label_map.get(cls, str(cls).lower())
                 if cls_str in malware_classes:
                     if float(proba[i]) > best_score:
                         best_score = float(proba[i])
-                        # Map "1" or "malicious" to "wannacry" for backward compat
-                        if cls_str in ("wannacry", "blackcat"):
-                            best_label = cls_str
-                        else:
-                            best_label = "wannacry"
+                        best_label = cls_str if cls_str in ("wannacry", "blackcat") else "wannacry"
             score = best_score
         else:
             pred = int(self._model.predict(arr)[0])

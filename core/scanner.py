@@ -8,6 +8,7 @@ from pathlib import Path
 
 from core.feature_extractor import extract_features
 from core.fp_reducer import FPReducer
+from core.hash_engine import HashEngine
 from core.logger_setup import get_logger
 from core.ml_engine import MLEngine
 from core.pe_analyzer import analyze as pe_analyze
@@ -85,6 +86,16 @@ class Scanner:
                 logger.warning("YARA engine unavailable: %s", e)
         else:
             logger.info("No YARA rules found — YARA layer disabled")
+
+        self.hash_engine: HashEngine | None = None
+        hash_file = self.scanner_cfg.get("hash_database")
+        if hash_file:
+            try:
+                self.hash_engine = HashEngine(hash_file=Path(hash_file))
+            except Exception as e:
+                logger.warning("Hash engine unavailable: %s", e)
+        else:
+            logger.info("No hash database configured — SHA256 hash layer disabled")
 
     def _should_scan(self, file_path: Path) -> bool:
         """Check if a file should be scanned.
@@ -188,23 +199,29 @@ class Scanner:
                 logger.debug("YARA scan failed for %s: %s", file_path, e)
         result.yara_matches = yara_matches
 
+        hash_match = False
+        if self.hash_engine and result.sha256:
+            hash_match = self.hash_engine.is_known_malware(result.sha256)
+
         verdict = _combine_verdict(
             ml_label=ml_label,
             ml_score=ml_score,
             ml_threshold=self.ml_cfg["threshold"],
             pe_score=pe_result.suspicion_score,
             yara_matches=yara_matches,
+            hash_match=hash_match,
         )
         result.verdict = verdict
 
         if verdict != "benign":
             logger.info(
-                "Detection: %s | verdict=%s | ml=%.3f | pe=%.2f | yara=%s",
+                "Detection: %s | verdict=%s | ml=%.3f | pe=%.2f | yara=%s | hash=%s",
                 file_path.name,
                 verdict,
                 ml_score,
                 pe_result.suspicion_score,
                 yara_matches,
+                hash_match,
             )
 
         return result
@@ -264,6 +281,7 @@ def _combine_verdict(
     ml_threshold: float,
     pe_score: float,
     yara_matches: list[str],
+    hash_match: bool = False,
 ) -> str:
     """Combine signals from all detection layers into a final verdict.
 
@@ -273,10 +291,14 @@ def _combine_verdict(
         ml_threshold: ML threshold from config.
         pe_score: Suspicion score from PE analyzer.
         yara_matches: List of matching YARA rule names.
+        hash_match: Whether SHA256 matches known malware database.
 
     Returns:
-        Final verdict: "wannacry", "blackcat", "suspicious", or "benign".
+        Final verdict: "known_malware", "wannacry", "blackcat", "suspicious", or "benign".
     """
+    if hash_match:
+        return "known_malware"
+
     if yara_matches:
         # Check which family the YARA rules belong to
         has_blackcat = any(m.startswith("BlackCat") for m in yara_matches)

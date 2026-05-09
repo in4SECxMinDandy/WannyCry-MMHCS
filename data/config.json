@@ -7,7 +7,8 @@
         ],
         "max_file_size_mb": 100,
         "whitelist_hashes": [],
-        "whitelist_paths": []
+        "whitelist_paths": [],
+        "hash_database": "full_sha256.txt"
     },
     "ml_engine": {
         "model_path": "models/wannacry_rf.pkl",
@@ -21,7 +22,7 @@
     },
     "yara_engine": {
         "rules_dir": "rules",
-        "rules_files": ["wannacry.yar", "blackcat.yar"],
+        "rules_files": ["wannacry.yar", "blackcat.yar", "generic_malware.yar"],
         "compile_on_load": true
     },
     "report": {
